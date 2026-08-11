@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { 
   Phone, 
   Video, 
@@ -9,9 +10,11 @@ import {
   Paperclip, 
   MoreVertical, 
   Search,
-  Menu,
   ChevronLeft
 } from 'lucide-react';
+
+// Connect to Node.js backend server
+const socket = io('http://localhost:5000');
 
 const MessagePage = () => {
   const [messages, setMessages] = useState([
@@ -21,14 +24,30 @@ const MessagePage = () => {
   const [inputText, setInputText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  useEffect(() => {
+    // Listen for incoming real-time messages from Socket.io server
+    socket.on('receive_message', (data) => {
+      setMessages((prev) => [...prev, data]);
+    });
+
+    return () => {
+      socket.off('receive_message');
+    };
+  }, []);
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), sender: 'me', text: inputText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-    ]);
+    const messageData = {
+      id: Date.now(),
+      sender: 'me',
+      text: inputText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    // Emit message to Socket.io server
+    socket.emit('send_message', messageData);
     setInputText('');
   };
 
